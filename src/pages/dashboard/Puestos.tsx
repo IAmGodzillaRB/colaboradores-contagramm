@@ -117,7 +117,7 @@ const Positions: React.FC = () => {
 
   return (
     <div className="flex justify-center h-screen bg-gray-100">
-      <div className="w-full max-w-7xl px-6 py-8 flex flex-col h-full bg-white shadow-lg rounded-lg">
+      <div className="w-full px-6 py-8 flex flex-col h-full bg-white shadow-lg rounded-lg">
         <h2 className="text-3xl font-semibold mb-6 text-center text-blue-800">Puestos</h2>
 
         {/* Buscador y botón de agregar (Ahora Responsive) */}

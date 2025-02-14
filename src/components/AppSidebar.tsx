@@ -50,22 +50,22 @@ const AppSidebar: React.FC<{ collapsed: boolean; isMobile: boolean }> = ({ colla
   return (
     <div
       className={`flex flex-col h-screen bg-[#00274d] border-r-2 border-[#004c99] shadow-lg ${
-        collapsed && isMobile ? 'hidden' : collapsed ? 'w-20' : 'w-64'
+        collapsed && !isMobile ? 'w-20' : 'w-64' // Ancho fijo en móviles, colapsado en escritorio
       }`}
       style={{
-        position: isMobile ? 'absolute' : 'fixed', // Posición absoluta en móviles
+        position: isMobile ? 'fixed' : 'static', // Posición fija en móviles, estática en escritorio
         height: '100vh',
         zIndex: 1,
-        transition: 'transform 0.2s', // Transición suave
-        transform: isMobile && collapsed ? 'translateX(-100%)' : 'translateX(0)', // Deslizar el sidebar
+        transition: isMobile ? 'transform 0.3s ease-in-out' : 'width 0.3s ease-in-out', // Animación suave
+        transform: isMobile && collapsed ? 'translateX(-100%)' : 'translateX(0)', // Deslizar el sidebar en móviles
       }}
     >
       {/* Logo */}
       <div className="flex items-center justify-center p-4 border-b border-[#004c99]">
         <img
-          src={collapsed ? "/Isotipo-blanco.png" : "/logo-blanco.png"}
+          src={collapsed && !isMobile ? "/Isotipo-blanco.png" : "/logo-blanco.png"} // Cambiar logo en escritorio
           alt="Logo"
-          className={collapsed ? "w-10" : "w-28"}
+          className={collapsed && !isMobile ? "w-28" : "w-28"} // Cambiar tamaño en escritorio
         />
       </div>
 
@@ -74,7 +74,7 @@ const AppSidebar: React.FC<{ collapsed: boolean; isMobile: boolean }> = ({ colla
         theme="dark" // Fondo oscuro
         mode="inline" // Modo vertical
         className="bg-transparent flex-1"
-        inlineCollapsed={collapsed} // Colapsar el menú
+        inlineCollapsed={collapsed && !isMobile} // Colapsar el menú en escritorio
         items={menuItems} // Usar la propiedad `items`
       />
 

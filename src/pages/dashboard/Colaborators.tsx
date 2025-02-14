@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 import ColaboradorModal from '../../components/modals/CollaboratorModal';
 import * as XLSX from 'xlsx';
 import { DocumentData, DocumentReference } from 'firebase/firestore';
+import type { ColumnsType } from 'antd/es/table';
 
 type Collaborator = {
   id: string;
@@ -19,6 +20,33 @@ type Collaborator = {
 type Puesto = {
   nombrePuesto: string;
 };
+
+// Función utilitaria para mostrar notificaciones
+const showNotification = (type: 'success' | 'error', message: string, description?: string) => {
+  notification[type]({
+    message,
+    description,
+  });
+};
+
+// Componente reutilizable para botones de acción
+const ActionButton: React.FC<{
+  icon: React.ReactNode;
+  onClick: () => void;
+  tooltip: string;
+  ariaLabel: string;
+  danger?: boolean;
+}> = ({ icon, onClick, tooltip, ariaLabel, danger }) => (
+  <Tooltip title={tooltip}>
+    <Button
+      type="link"
+      icon={icon}
+      onClick={onClick}
+      danger={danger}
+      aria-label={ariaLabel}
+    />
+  </Tooltip>
+);
 
 const Colaborators: React.FC = () => {
   const [collaboratorsList, setCollaboratorsList] = useState<Collaborator[]>([]);
@@ -73,10 +101,7 @@ const Colaborators: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
       setError(errorMessage);
-      notification.error({
-        message: 'Error al cargar colaboradores',
-        description: errorMessage,
-      });
+      showNotification('error', 'Error al cargar colaboradores', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -96,10 +121,7 @@ const Colaborators: React.FC = () => {
       setPuestosMap(puestosData);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-      notification.error({
-        message: 'Error al cargar puestos',
-        description: errorMessage,
-      });
+      showNotification('error', 'Error al cargar puestos', errorMessage);
     }
   }, []);
 
@@ -120,17 +142,11 @@ const Colaborators: React.FC = () => {
       if (result.isConfirmed) {
         await deleteDoc(doc(db, 'colaboradores', id));
         setCollaboratorsList((prevList) => prevList.filter((collaborator) => collaborator.id !== id));
-        notification.success({
-          message: 'Éxito',
-          description: 'El colaborador ha sido eliminado correctamente.',
-        });
+        showNotification('success', 'Éxito', 'El colaborador ha sido eliminado correctamente.');
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-      notification.error({
-        message: 'Error al eliminar',
-        description: errorMessage,
-      });
+      showNotification('error', 'Error al eliminar', errorMessage);
     }
   };
 
@@ -145,16 +161,10 @@ const Colaborators: React.FC = () => {
 
       XLSX.writeFile(workbook, 'colaboradores.xlsx');
 
-      notification.success({
-        message: 'Exportación exitosa',
-        description: 'Los datos han sido exportados a Excel correctamente.',
-      });
+      showNotification('success', 'Exportación exitosa', 'Los datos han sido exportados a Excel correctamente.');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-      notification.error({
-        message: 'Error al exportar',
-        description: errorMessage,
-      });
+      showNotification('error', 'Error al exportar', errorMessage);
     }
   };
 
@@ -171,10 +181,9 @@ const Colaborators: React.FC = () => {
   }, [collaboratorsList, searchTerm, selectedPuesto, selectedEstatus]);
 
   // Columnas de la tabla con componentes reutilizables
-  const columns = useMemo(() => [
+  const columns: ColumnsType<Collaborator> = useMemo(() => [
     {
       title: 'ID Colaborador',
-      id: 'idColaborador',
       dataIndex: 'idColaborador',
       key: 'idColaborador',
     },
@@ -192,30 +201,33 @@ const Colaborators: React.FC = () => {
         text: nombrePuesto,
         value: nombrePuesto,
       })),
-      onFilter: (value: string | number | boolean, record: Collaborator) =>
-        record.nombrePuesto === value,
+      onFilter: (value: string | number | boolean | React.Key, record: Collaborator) => {
+        // Asegúrate de que el valor sea un string
+        if (typeof value === 'string') {
+          return record.nombrePuesto === value;
+        }
+        return false;
+      },
     },
     {
       title: 'Estatus',
       dataIndex: 'estatus',
       key: 'estatus',
-      render: (estatus: boolean | string) => {
-        (typeof estatus === 'boolean')
-        return (
-          <Tag color={estatus ? 'green' : 'red'} aria-label={estatus ? 'Activo' : 'Inactivo'}>
-            {estatus ? 'Activo' : 'Inactivo'}
-          </Tag>
-        );
-      },
+      render: (estatus: boolean) => (
+        <Tag color={estatus ? 'green' : 'red'} aria-label={estatus ? 'Activo' : 'Inactivo'}>
+          {estatus ? 'Activo' : 'Inactivo'}
+        </Tag>
+      ),
       filters: [
         { text: 'Activo', value: true },
         { text: 'Inactivo', value: false },
       ],
-      onFilter: (value: string | number | boolean, record: Collaborator) => {
-        if (value === 'Sin Estatus') {
-          return typeof record.estatus !== 'boolean';
+      onFilter: (value: boolean | React.Key, record: Collaborator) => {
+        // Asegúrate de que el valor sea un booleano
+        if (typeof value === 'boolean') {
+          return record.estatus === value;
         }
-        return record.estatus === value;
+        return false;
       },
     },
     {
@@ -223,26 +235,22 @@ const Colaborators: React.FC = () => {
       key: 'actions',
       render: (record: Collaborator) => (
         <div className="flex space-x-2">
-          <Tooltip title="Editar colaborador">
-            <Button
-              type="link"
-              icon={<EditOutlined />}
-              onClick={() => {
-                setSelectedCollaborator(record);
-                setIsModalOpen(true);
-              }}
-              aria-label="Editar colaborador"
-            />
-          </Tooltip>
-          <Tooltip title="Eliminar colaborador">
-            <Button
-              type="link"
-              icon={<DeleteOutlined />}
-              onClick={() => handleDelete(record.id)}
-              danger
-              aria-label="Eliminar colaborador"
-            />
-          </Tooltip>
+          <ActionButton
+            icon={<EditOutlined />}
+            onClick={() => {
+              setSelectedCollaborator(record);
+              setIsModalOpen(true);
+            }}
+            tooltip="Editar colaborador"
+            ariaLabel="Editar colaborador"
+          />
+          <ActionButton
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record.id)}
+            tooltip="Eliminar colaborador"
+            ariaLabel="Eliminar colaborador"
+            danger
+          />
         </div>
       ),
     },
@@ -251,7 +259,7 @@ const Colaborators: React.FC = () => {
   useEffect(() => {
     fetchCollaborators();
     fetchPuestos();
-  }, []);
+  }, [fetchCollaborators, fetchPuestos]);
 
   return (
     <div className="flex justify-center h-screen bg-gray-100">
@@ -279,11 +287,11 @@ const Colaborators: React.FC = () => {
                 backgroundColor: '#28a745',
                 borderColor: '#28a745',
                 color: 'white',
-              }}  // Botón verde
-              icon={<FileExcelOutlined />}  // Ícono de Excel
+              }}
+              icon={<FileExcelOutlined />}
               onClick={handleExportToExcel}
               aria-label="Exportar a Excel"
-              className="w-full sm:w-auto"  // Botón responsivo
+              className="w-full sm:w-auto"
             >
               Ver Excel
             </Button>
@@ -330,7 +338,6 @@ const Colaborators: React.FC = () => {
         </div>
       </div>
     </div>
-
   );
 };
 

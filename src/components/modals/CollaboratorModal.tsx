@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Input, Button, Select, Form, message } from 'antd';
-import { db, collection, getDocs, addDoc, doc, updateDoc, getDoc } from '../../service/firebaseConfig'; // Ajusta la ruta si es necesario
+import { db, collection, getDocs, addDoc, doc, updateDoc, getDoc } from '../../service/firebaseConfig';
+import { UserOutlined, IdcardOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 
 // Definir los tipos de los datos
 interface Puesto {
@@ -9,6 +10,7 @@ interface Puesto {
 }
 
 interface Colaborador {
+  id?: string; // ID opcional (generado por Firestore)
   idColaborador: string;
   nombre: string;
   idPuesto: string;
@@ -102,6 +104,13 @@ const ColaboradorModal: React.FC<ColaboradorModalProps> = ({ open, isEditMode, c
       console.log('Datos a guardar:', colaboradorData); // Ver los datos antes de guardar
 
       if (isEditMode) {
+        // Verificar si collaboratorData está definido y tiene un ID
+        if (!collaboratorData || !collaboratorData.id) {
+          console.error('No se encontró el colaborador para actualizar o falta el ID.');
+          message.error('No se encontró el colaborador para actualizar o falta el ID.');
+          return;
+        }
+
         // Aquí usamos el ID del documento de Firestore para actualizar
         const docRef = doc(db, 'colaboradores', collaboratorData.id);  // Usamos `id` de Firestore
         const docSnapshot = await getDoc(docRef);
@@ -135,26 +144,50 @@ const ColaboradorModal: React.FC<ColaboradorModalProps> = ({ open, isEditMode, c
       visible={open}
       onCancel={onClose}
       footer={null}
+      width={600} // Ajustar el ancho del modal
+      bodyStyle={{ padding: '24px' }} // Ajustar el padding interno
     >
       <Form
         form={form}
         layout="vertical"
         onFinish={handleSave}
       >
-        <Form.Item label="ID Colaborador" name="idColaborador">
+        {/* Campo ID Colaborador */}
+        <Form.Item
+          label="ID Colaborador"
+          name="idColaborador"
+          rules={[{ required: true, message: 'El ID del colaborador es obligatorio' }]}
+        >
           <Input
+            prefix={<IdcardOutlined />} // Ícono para el campo
+            placeholder="Ingrese el ID del colaborador"
             value={formData.idColaborador}
             onChange={(e) => setFormData({ ...formData, idColaborador: e.target.value })}
           />
         </Form.Item>
-        <Form.Item label="Nombre" name="nombre">
+
+        {/* Campo Nombre */}
+        <Form.Item
+          label="Nombre"
+          name="nombre"
+          rules={[{ required: true, message: 'El nombre es obligatorio' }]}
+        >
           <Input
+            prefix={<UserOutlined />} // Ícono para el campo
+            placeholder="Ingrese el nombre del colaborador"
             value={formData.nombre}
             onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
           />
         </Form.Item>
-        <Form.Item label="Puesto" name="idPuesto">
+
+        {/* Campo Puesto */}
+        <Form.Item
+          label="Puesto"
+          name="idPuesto"
+          rules={[{ required: true, message: 'El puesto es obligatorio' }]}
+        >
           <Select
+            placeholder="Seleccione un puesto"
             value={formData.idPuesto}
             onChange={(value) => setFormData({ ...formData, idPuesto: value })}
           >
@@ -165,21 +198,34 @@ const ColaboradorModal: React.FC<ColaboradorModalProps> = ({ open, isEditMode, c
             ))}
           </Select>
         </Form.Item>
-        <Form.Item label="Estatus" name="estatus">
+
+        {/* Campo Estatus */}
+        <Form.Item
+          label="Estatus"
+          name="estatus"
+          rules={[{ required: true, message: 'El estatus es obligatorio' }]}
+        >
           <Select
+            placeholder="Seleccione el estatus"
             value={formData.estatus ? 'true' : 'false'}  // Convertir booleano a cadena
             onChange={(value) => setFormData({ ...formData, estatus: value === 'true' })}  // Convertir cadena a booleano
           >
-            <Select.Option value="true">Activo</Select.Option>
-            <Select.Option value="false">Inactivo</Select.Option>
+            <Select.Option value="true">
+              <CheckCircleOutlined style={{ color: '#52c41a' }} /> Activo
+            </Select.Option>
+            <Select.Option value="false">
+              <CloseCircleOutlined style={{ color: '#ff4d4f' }} /> Inactivo
+            </Select.Option>
           </Select>
         </Form.Item>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Button type="primary" htmlType="submit">
-            Guardar
-          </Button>
+
+        {/* Botones de acción */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
           <Button type="default" onClick={onClose}>
             Cancelar
+          </Button>
+          <Button type="primary" htmlType="submit">
+            Guardar
           </Button>
         </div>
       </Form>

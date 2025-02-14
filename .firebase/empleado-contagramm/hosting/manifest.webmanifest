@@ -1,0 +1,1 @@
+{"name":"Aplicación PWA Contagramm","short_name":"Contagramm","start_url":"/usuarios/login","display":"standalone","background_color":"#ffffff","lang":"en","scope":"/","description":"Una aplicación PWA increíble","icons":[{"src":"favicon192.png","sizes":"192x192","type":"icon/png"},{"src":"favicon512.png","sizes":"512x512","type":"icon/png"}],"theme_color":"#000000"}

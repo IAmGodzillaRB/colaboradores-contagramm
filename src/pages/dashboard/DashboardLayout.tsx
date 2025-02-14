@@ -14,8 +14,10 @@ import { MenuUnfoldOutlined, MenuFoldOutlined } from '@ant-design/icons';
 const DashboardLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const { user } = useAuth(); // Obtener el usuario desde el contexto
+  const [isMenuOpen, setIsMenuOpen] = useState(false); // Estado para controlar el menú
+  const { user, logout } = useAuth(); // Obtener el usuario y la función de logout desde el contexto
   const sidebarRef = useRef<HTMLDivElement>(null); // Ref para la barra lateral
+  const menuRef = useRef<HTMLDivElement>(null); // Ref para el menú desplegable
 
   // Colapsar automáticamente en dispositivos móviles
   useEffect(() => {
@@ -59,8 +61,36 @@ const DashboardLayout: React.FC = () => {
     };
   }, [isMobile]);
 
+  // Cerrar el menú al hacer clic fuera de él
+  useEffect(() => {
+    const handleClickOutsideMenu = (event: MouseEvent) => {
+      if (
+        menuRef.current && // Verificar que el menú exista
+        !menuRef.current.contains(event.target as Node) // Verificar si el clic fue fuera
+      ) {
+        setIsMenuOpen(false); // Cerrar el menú
+      }
+    };
+
+    // Agregar el event listener al documento
+    document.addEventListener('mousedown', handleClickOutsideMenu);
+
+    // Limpiar el event listener al desmontar
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutsideMenu);
+    };
+  }, []);
+
   const toggleCollapse = () => {
     setCollapsed(!collapsed);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout(); // Cerrar sesión
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
   };
 
   return (
@@ -80,27 +110,63 @@ const DashboardLayout: React.FC = () => {
       <main
         className="flex-1 bg-gray-100 overflow-auto transition-all"
         style={{
-          marginLeft: isMobile && collapsed ? '0' : isMobile ? '80px' : collapsed ? '80px' : '256px', // Ajustar margen en móviles
-          transition: 'margin-left 0.2s',
+          transition: 'margin-left 0.3s ease-in-out', // Animación suave
         }}
       >
         {/* Encabezado */}
-        <div className="bg-[#00274d] shadow-sm p-6 flex justify-between items-center text-white">
-          <div className="flex items-center gap-4">
+        <div className="bg-[#00274d] shadow-sm p-4 lg:p-6 flex justify-between items-center text-white">
+          {/* Botón a la izquierda */}
+          <div className="flex items-center gap-2 lg:gap-4">
             <Button
               type="text"
               icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
               onClick={toggleCollapse}
-              style={{ color: 'white' }}
+              className="flex justify-center text-white p-2 text-xl hover:bg-transparent hover:text-white"
             />
-            <h1 className="text-2xl font-bold">Bienvenido, {user?.nombre || 'Usuario'}</h1>
+            <h1 className="text-lg lg:text-2xl font-bold m-0">Bienvenido, {user?.nombre || 'Usuario'}</h1>
           </div>
-          <div className="w-12 h-12 bg-[#66b2ff] rounded-full flex items-center justify-center">
-            <img
-              src={user?.avatar || '/default-avatar.png'} // Usar el avatar del usuario o uno por defecto
-              alt="Avatar"
-              className="w-full h-full rounded-full"
-            />
+
+          {/* Avatar a la derecha */}
+          <div className="relative">
+            <div
+              className="w-10 h-10 lg:w-12 lg:h-12 bg-[#66b2ff] rounded-full flex items-center justify-center cursor-pointer"
+              onClick={() => setIsMenuOpen(!isMenuOpen)} // Abrir/cerrar el menú
+            >
+              <img
+                src={user?.avatar || '/avatar.svg'}
+                alt="Avatar"
+                className="w-full h-full rounded-full"
+              />
+            </div>
+
+            {/* Menú desplegable con viñeta */}
+            {isMenuOpen && (
+              <div
+                ref={menuRef}
+                className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-50"
+                style={{
+                  transform: 'translateY(10px)', // Ajustar posición
+                }}
+              >
+                {/* Viñeta */}
+                <div
+                  className="absolute -top-2 right-4 w-4 h-4 bg-white transform rotate-45"
+                  style={{
+                    boxShadow: '-2px -2px 2px rgba(0, 0, 0, 0.1)', // Sombra para la viñeta
+                  }}
+                ></div>
+
+                {/* Opciones del menú */}
+                <div className="py-1">
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Cerrar sesión
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

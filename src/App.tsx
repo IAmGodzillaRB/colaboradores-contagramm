@@ -7,6 +7,7 @@ import EmployeeVerifier from './pages/dashboard/EmployeeVerifier';
 
 const App = () => {
   return (
+    
     <AuthProvider>
       <Router>
         <Routes>
