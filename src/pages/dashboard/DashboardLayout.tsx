@@ -7,17 +7,17 @@ import Puestos from './Puestos';
 import CSVPuestos from '../dashboard/CSVUpload';
 import Users from '../dashboard/UsersManagement';
 import { Helmet } from 'react-helmet';
-import { useAuth } from '../../context/AuthContext'; // Importar el contexto de autenticación
+import { useAuth } from '../../context/AuthContext';
 import { Button } from 'antd';
 import { MenuUnfoldOutlined, MenuFoldOutlined } from '@ant-design/icons';
 
 const DashboardLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const [isMenuOpen, setIsMenuOpen] = useState(false); // Estado para controlar el menú
-  const { user, logout } = useAuth(); // Obtener el usuario y la función de logout desde el contexto
-  const sidebarRef = useRef<HTMLDivElement>(null); // Ref para la barra lateral
-  const menuRef = useRef<HTMLDivElement>(null); // Ref para el menú desplegable
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Colapsar automáticamente en dispositivos móviles
   useEffect(() => {
@@ -26,13 +26,13 @@ const DashboardLayout: React.FC = () => {
       setIsMobile(isMobileView);
 
       if (isMobileView) {
-        setCollapsed(true); // Colapsar en móviles
+        setCollapsed(true);
       } else {
-        setCollapsed(false); // Expandir en escritorio
+        setCollapsed(false);
       }
     };
 
-    handleResize(); // Ejecutar al montar
+    handleResize();
     window.addEventListener('resize', handleResize);
 
     return () => {
@@ -44,18 +44,16 @@ const DashboardLayout: React.FC = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        isMobile && // Solo en móviles
-        sidebarRef.current && // Verificar que la barra lateral exista
-        !sidebarRef.current.contains(event.target as Node) // Verificar si el clic fue fuera
+        isMobile &&
+        sidebarRef.current &&
+        !sidebarRef.current.contains(event.target as Node)
       ) {
-        setCollapsed(true); // Colapsar la barra lateral
+        setCollapsed(true);
       }
     };
 
-    // Agregar el event listener al documento
     document.addEventListener('mousedown', handleClickOutside);
 
-    // Limpiar el event listener al desmontar
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
@@ -65,17 +63,15 @@ const DashboardLayout: React.FC = () => {
   useEffect(() => {
     const handleClickOutsideMenu = (event: MouseEvent) => {
       if (
-        menuRef.current && // Verificar que el menú exista
-        !menuRef.current.contains(event.target as Node) // Verificar si el clic fue fuera
+        menuRef.current &&
+        !menuRef.current.contains(event.target as Node)
       ) {
-        setIsMenuOpen(false); // Cerrar el menú
+        setIsMenuOpen(false);
       }
     };
 
-    // Agregar el event listener al documento
     document.addEventListener('mousedown', handleClickOutsideMenu);
 
-    // Limpiar el event listener al desmontar
     return () => {
       document.removeEventListener('mousedown', handleClickOutsideMenu);
     };
@@ -87,9 +83,16 @@ const DashboardLayout: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await logout(); // Cerrar sesión
+      await logout();
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
+    }
+  };
+
+  // Función para colapsar el sidebar
+  const handleItemClick = () => {
+    if (isMobile) {
+      setCollapsed(true);
     }
   };
 
@@ -103,19 +106,22 @@ const DashboardLayout: React.FC = () => {
 
       {/* Sidebar */}
       <div ref={sidebarRef}>
-        <SidebarComponent collapsed={collapsed} isMobile={isMobile} />
+        <SidebarComponent
+          collapsed={collapsed}
+          isMobile={isMobile}
+          onItemClick={handleItemClick} // Pasa la función como prop
+        />
       </div>
 
       {/* Contenido principal */}
       <main
         className="flex-1 bg-gray-100 overflow-auto transition-all"
         style={{
-          transition: 'margin-left 0.3s ease-in-out', // Animación suave
+          transition: 'margin-left 0.3s ease-in-out',
         }}
       >
         {/* Encabezado */}
         <div className="bg-[#00274d] shadow-sm p-4 lg:p-6 flex justify-between items-center text-white">
-          {/* Botón a la izquierda */}
           <div className="flex items-center gap-2 lg:gap-4">
             <Button
               type="text"
@@ -130,7 +136,7 @@ const DashboardLayout: React.FC = () => {
           <div className="relative">
             <div
               className="w-10 h-10 lg:w-12 lg:h-12 bg-[#66b2ff] rounded-full flex items-center justify-center cursor-pointer"
-              onClick={() => setIsMenuOpen(!isMenuOpen)} // Abrir/cerrar el menú
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
               <img
                 src={user?.avatar || '/avatar.svg'}
@@ -145,18 +151,16 @@ const DashboardLayout: React.FC = () => {
                 ref={menuRef}
                 className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-50"
                 style={{
-                  transform: 'translateY(10px)', // Ajustar posición
+                  transform: 'translateY(10px)',
                 }}
               >
-                {/* Viñeta */}
                 <div
                   className="absolute -top-2 right-4 w-4 h-4 bg-white transform rotate-45"
                   style={{
-                    boxShadow: '-2px -2px 2px rgba(0, 0, 0, 0.1)', // Sombra para la viñeta
+                    boxShadow: '-2px -2px 2px rgba(0, 0, 0, 0.1)',
                   }}
                 ></div>
 
-                {/* Opciones del menú */}
                 <div className="py-1">
                   <button
                     onClick={handleLogout}

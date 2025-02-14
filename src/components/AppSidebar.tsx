@@ -10,72 +10,76 @@ import {
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 
-const AppSidebar: React.FC<{ collapsed: boolean; isMobile: boolean }> = ({ collapsed, isMobile }) => {
-  const { logout } = useAuth(); // Obtén la función de logout desde el contexto
+const AppSidebar: React.FC<{
+  collapsed: boolean;
+  isMobile: boolean;
+  onItemClick: () => void; // Nueva prop para manejar el clic
+}> = ({ collapsed, isMobile, onItemClick }) => {
+  const { logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
-      await logout(); // Cierra sesión
-      navigate('/usuarios/login'); // Redirige al login
+      await logout();
+      navigate('/usuarios/login');
     } catch (error) {
       console.error('Error al cerrar sesión:', error);
     }
   };
 
-  // Definir los elementos del menú usando la propiedad `items`
+  // Definir los elementos del menú
   const menuItems = [
     {
       key: 'dashboard',
       icon: <DashboardOutlined />,
-      label: <Link to="/dashboard">Dashboard</Link>,
+      label: <Link to="/dashboard" onClick={onItemClick}>Dashboard</Link>, // Llama a onItemClick
     },
     {
       key: 'colaborators',
       icon: <TeamOutlined />,
-      label: <Link to="/dashboard/colaborators">Colaboradores</Link>,
+      label: <Link to="/dashboard/colaborators" onClick={onItemClick}>Colaboradores</Link>, // Llama a onItemClick
     },
     {
       key: 'puestos',
       icon: <BankOutlined />,
-      label: <Link to="/dashboard/puestos">Puestos</Link>,
+      label: <Link to="/dashboard/puestos" onClick={onItemClick}>Puestos</Link>, // Llama a onItemClick
     },
     {
       key: 'users',
       icon: <UserOutlined />,
-      label: <Link to="/dashboard/users">Usuarios</Link>,
+      label: <Link to="/dashboard/users" onClick={onItemClick}>Usuarios</Link>, // Llama a onItemClick
     },
   ];
 
   return (
     <div
       className={`flex flex-col h-screen bg-[#00274d] border-r-2 border-[#004c99] shadow-lg ${
-        collapsed && !isMobile ? 'w-20' : 'w-64' // Ancho fijo en móviles, colapsado en escritorio
+        collapsed && !isMobile ? 'w-20' : 'w-64'
       }`}
       style={{
-        position: isMobile ? 'fixed' : 'static', // Posición fija en móviles, estática en escritorio
+        position: isMobile ? 'fixed' : 'static',
         height: '100vh',
         zIndex: 1,
-        transition: isMobile ? 'transform 0.3s ease-in-out' : 'width 0.3s ease-in-out', // Animación suave
-        transform: isMobile && collapsed ? 'translateX(-100%)' : 'translateX(0)', // Deslizar el sidebar en móviles
+        transition: isMobile ? 'transform 0.3s ease-in-out' : 'width 0.3s ease-in-out',
+        transform: isMobile && collapsed ? 'translateX(-100%)' : 'translateX(0)',
       }}
     >
       {/* Logo */}
       <div className="flex items-center justify-center p-4 border-b border-[#004c99]">
         <img
-          src={collapsed && !isMobile ? "/Isotipo-blanco.png" : "/logo-blanco.png"} // Cambiar logo en escritorio
+          src={collapsed && !isMobile ? "/Isotipo-blanco.png" : "/logo-blanco.png"}
           alt="Logo"
-          className={collapsed && !isMobile ? "w-28" : "w-28"} // Cambiar tamaño en escritorio
+          className={collapsed && !isMobile ? "w-28" : "w-28"}
         />
       </div>
 
       {/* Menú */}
       <Menu
-        theme="dark" // Fondo oscuro
-        mode="inline" // Modo vertical
+        theme="dark"
+        mode="inline"
         className="bg-transparent flex-1"
-        inlineCollapsed={collapsed && !isMobile} // Colapsar el menú en escritorio
-        items={menuItems} // Usar la propiedad `items`
+        inlineCollapsed={collapsed && !isMobile}
+        items={menuItems}
       />
 
       {/* Botón de cerrar sesión */}
