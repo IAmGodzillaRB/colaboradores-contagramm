@@ -1,14 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import Modal from '@mui/material/Modal';
-import Box from '@mui/material/Box';
-import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import Select, { SelectChangeEvent } from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
-import InputLabel from '@mui/material/InputLabel';
-import FormControl from '@mui/material/FormControl';
-import { db, collection, getDocs, addDoc, doc, updateDoc } from '../../service/firebaseConfig'; // Ajusta la ruta si es necesario
-import Swal from 'sweetalert2';
+import { Modal, Input, Button, Select, Form, message } from 'antd';
+import { db, collection, getDocs, addDoc, doc, updateDoc, getDoc } from '../../service/firebaseConfig'; // Ajusta la ruta si es necesario
 
 // Definir los tipos de los datos
 interface Puesto {
@@ -40,6 +32,7 @@ const ColaboradorModal: React.FC<ColaboradorModalProps> = ({ open, isEditMode, c
   });
 
   const [puestos, setPuestos] = useState<Puesto[]>([]); // Opciones de la colección de puestos
+  const [form] = Form.useForm(); // Obtener la instancia del formulario
 
   // Obtener datos de la colección 'puestos' al cargar el componente
   useEffect(() => {
@@ -55,7 +48,7 @@ const ColaboradorModal: React.FC<ColaboradorModalProps> = ({ open, isEditMode, c
         const sortedPuestos = puestosData.sort((a, b) =>
           a.nombrePuesto.localeCompare(b.nombrePuesto)
         );
-    
+
         setPuestos(sortedPuestos);
 
       } catch (error) {
@@ -68,54 +61,63 @@ const ColaboradorModal: React.FC<ColaboradorModalProps> = ({ open, isEditMode, c
   // Inicializar datos del formulario cuando se abra el modal
   useEffect(() => {
     if (isEditMode && collaboratorData) {
+      console.log('Datos de colaborador para editar:', collaboratorData);  // Agrega un log para ver los datos
       setFormData({
         idColaborador: collaboratorData.idColaborador || '',
         nombre: collaboratorData.nombre || '',
         idPuesto: collaboratorData.idPuesto || '',
-        estatus: collaboratorData.estatus, // El estatus ya es un booleano
+        estatus: collaboratorData.estatus,  // Estatus ya es un booleano
+      });
+      // Actualiza los valores del formulario
+      form.setFieldsValue({
+        idColaborador: collaboratorData.idColaborador || '',
+        nombre: collaboratorData.nombre || '',
+        idPuesto: collaboratorData.idPuesto || '',
+        estatus: collaboratorData.estatus ? 'true' : 'false', // Convertir booleano a cadena para el Select
       });
     } else {
       setFormData({
         idColaborador: '',
         nombre: '',
         idPuesto: '',
-        estatus: true, // Por defecto, 'Activo' (true)
+        estatus: true,  // Por defecto, 'Activo' (true)
       });
+      form.resetFields(); // Reiniciar campos en caso de no estar en modo de edición
     }
-  }, [isEditMode, collaboratorData]);
-
-  // Manejar cambios en los campos
-  const handleChange = (e: React.ChangeEvent<{ name?: string; value: string }>) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name as string]: name === 'estatus' ? value === 'true' : value });
-  };
-
-  // Manejar cambios en el Select
-  const handleSelectChange = (e: SelectChangeEvent<string>) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: name === 'estatus' ? value === 'true' : value });
-  };
+  }, [isEditMode, collaboratorData, form]);
 
   // Guardar cambios
   const handleSave = async () => {
     try {
       const puestoRef = doc(db, 'puestos', formData.idPuesto);
 
+      // Crear los datos del colaborador, manteniendo 'estatus' como un booleano
       const colaboradorData = {
         idColaborador: formData.idColaborador,
         nombre: formData.nombre,
         idPuesto: puestoRef,
-        estatus: formData.estatus ? 'Activo' : 'Inactivo', // Convertir a string para almacenar en Firestore
+        estatus: formData.estatus,  // 'estatus' sigue siendo un booleano
       };
 
+      console.log('Datos a guardar:', colaboradorData); // Ver los datos antes de guardar
+
       if (isEditMode) {
-        const docRef = doc(db, 'colaboradores', collaboratorData!.idColaborador); // ¡Asegurarse de que 'collaboratorData' no sea undefined!
+        // Aquí usamos el ID del documento de Firestore para actualizar
+        const docRef = doc(db, 'colaboradores', collaboratorData.id);  // Usamos `id` de Firestore
+        const docSnapshot = await getDoc(docRef);
+
+        if (!docSnapshot.exists()) {
+          console.error('No se encontró el colaborador con el ID:', collaboratorData.id);
+          message.error('No se encontró el colaborador para actualizar.');
+          return;
+        }
+
         await updateDoc(docRef, colaboradorData);
-        Swal.fire('¡Éxito!', 'Colaborador actualizado correctamente.', 'success');
+        message.success('¡Éxito! Colaborador actualizado correctamente.');
       } else {
         const collectionRef = collection(db, 'colaboradores');
         const docRef = await addDoc(collectionRef, colaboradorData);
-        Swal.fire('¡Éxito!', 'Nuevo colaborador agregado correctamente.', 'success');
+        message.success('¡Éxito! Nuevo colaborador agregado correctamente.');
         console.log("Nuevo colaborador ID:", docRef.id); // Obtener el ID generado por Firestore
       }
 
@@ -123,80 +125,64 @@ const ColaboradorModal: React.FC<ColaboradorModalProps> = ({ open, isEditMode, c
       onClose();   // Cierra el modal
     } catch (error) {
       console.error('Error al guardar el colaborador:', error);
-      Swal.fire('Error', 'Hubo un problema al guardar los datos.', 'error');
+      message.error('Hubo un problema al guardar los datos.');
     }
   };
 
   return (
-    <Modal open={open} onClose={onClose}>
-      <Box
-        sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 400,
-          bgcolor: 'background.paper',
-          borderRadius: 2,
-          boxShadow: 24,
-          p: 4,
-        }}
+    <Modal
+      title={isEditMode ? 'Editar Colaborador' : 'Agregar Colaborador'}
+      visible={open}
+      onCancel={onClose}
+      footer={null}
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSave}
       >
-        <h2>{isEditMode ? 'Editar Colaborador' : 'Agregar Colaborador'}</h2>
-        <TextField
-          fullWidth
-          margin="normal"
-          label="ID Colaborador"
-          name="idColaborador"
-          value={formData.idColaborador}
-          onChange={handleChange}
-        />
-        <TextField
-          fullWidth
-          margin="normal"
-          label="Nombre"
-          name="nombre"
-          value={formData.nombre}
-          onChange={handleChange}
-        />
-        <FormControl fullWidth margin="normal">
-          <InputLabel id="puesto-label">Puesto</InputLabel>
+        <Form.Item label="ID Colaborador" name="idColaborador">
+          <Input
+            value={formData.idColaborador}
+            onChange={(e) => setFormData({ ...formData, idColaborador: e.target.value })}
+          />
+        </Form.Item>
+        <Form.Item label="Nombre" name="nombre">
+          <Input
+            value={formData.nombre}
+            onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+          />
+        </Form.Item>
+        <Form.Item label="Puesto" name="idPuesto">
           <Select
-            labelId="puesto-label"
-            id="idPuesto"
-            name="idPuesto"
             value={formData.idPuesto}
-            onChange={handleSelectChange}  // Usamos el nuevo manejador aquí
+            onChange={(value) => setFormData({ ...formData, idPuesto: value })}
           >
             {puestos.map((puesto) => (
-              <MenuItem key={puesto.id} value={puesto.id}>
+              <Select.Option key={puesto.id} value={puesto.id}>
                 {puesto.nombrePuesto}
-              </MenuItem>
+              </Select.Option>
             ))}
           </Select>
-        </FormControl>
-        <FormControl fullWidth margin="normal">
-          <InputLabel id="estatus-label">Estatus</InputLabel>
+        </Form.Item>
+        <Form.Item label="Estatus" name="estatus">
           <Select
-            labelId="estatus-label"
-            id="estatus"
-            name="estatus"
-            value={formData.estatus.toString()}  // Convertir boolean a string para mostrar en Select
-            onChange={handleSelectChange}  // Usamos el nuevo manejador aquí
+            value={formData.estatus ? 'true' : 'false'}  // Convertir booleano a cadena
+            onChange={(value) => setFormData({ ...formData, estatus: value === 'true' })}  // Convertir cadena a booleano
           >
-            <MenuItem value="true">Activo</MenuItem>
-            <MenuItem value="false">Inactivo</MenuItem>
+            <Select.Option value="true">Activo</Select.Option>
+            <Select.Option value="false">Inactivo</Select.Option>
           </Select>
-        </FormControl>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
-          <Button variant="contained" color="primary" onClick={handleSave}>
+        </Form.Item>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <Button type="primary" htmlType="submit">
             Guardar
           </Button>
-          <Button variant="contained" color="error" onClick={onClose}>
+          <Button type="default" onClick={onClose}>
             Cancelar
           </Button>
         </div>
-      </Box>
+      </Form>
     </Modal>
   );
 };

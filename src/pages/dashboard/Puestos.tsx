@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { db, collection, getDocs, doc, query, where, deleteDoc } from '../../service/firebaseConfig';
-import { Table, Input, Button, Modal, Tooltip, Tag } from 'antd';
-import { EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { Table, Input, Button, Tooltip, Tag } from 'antd';
+import { EditOutlined, DeleteOutlined, EyeOutlined, FileAddOutlined } from '@ant-design/icons';
 import Swal from 'sweetalert2';
 import { Link } from 'react-router-dom';
 import PuestoModal from '../../components/modals/PuestoModal';
@@ -18,14 +18,18 @@ const Positions: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedPuesto, setSelectedPuesto] = useState<Puesto | null>(null);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [loading, setLoading] = useState<boolean>(true);// Estado de carga
 
   const fetchPuestos = async () => {
+    setLoading(true);
+
     const puestosCollection = collection(db, 'puestos');
     const puestosSnapshot = await getDocs(puestosCollection);
     const puestosData: Puesto[] = puestosSnapshot.docs.map((doc) => ({
       id: doc.id,
       nombrePuesto: doc.data().nombrePuesto,
-      empleadosCount: 0, // Inicialmente 0, se llenará más adelante
+      empleadosCount: 0,
     }));
 
     const puestosConEmpleados = await Promise.all(
@@ -40,6 +44,7 @@ const Positions: React.FC = () => {
     );
 
     setPositionsList(puestosConEmpleados);
+    setLoading(false); // Finalizar carga
   };
 
   useEffect(() => {
@@ -49,10 +54,6 @@ const Positions: React.FC = () => {
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value.toLowerCase());
   };
-
-  const filteredPositions = positionsList.filter((position) =>
-    !searchTerm || position.nombrePuesto.toLowerCase().includes(searchTerm)
-  );
 
   const handleEdit = (position: Puesto) => {
     setSelectedPuesto(position);
@@ -83,6 +84,7 @@ const Positions: React.FC = () => {
       title: 'Puesto',
       dataIndex: 'nombrePuesto',
       key: 'nombrePuesto',
+      ellipsis: true,
     },
     {
       title: 'Empleados',
@@ -91,10 +93,7 @@ const Positions: React.FC = () => {
       render: (empleadosCount: number, record: Puesto) => (
         <div className="flex items-center space-x-2">
           <Tag color="blue">{empleadosCount}</Tag>
-          <Link
-            to={`/colaboradores?puesto=${record.id}`}
-            className="text-blue-600 hover:text-blue-800 text-sm"
-          >
+          <Link to={`/colaboradores?puesto=${record.id}`} className="text-blue-600 hover:text-blue-800 text-sm">
             <EyeOutlined /> Ver
           </Link>
         </div>
@@ -106,19 +105,10 @@ const Positions: React.FC = () => {
       render: (record: Puesto) => (
         <div className="flex space-x-2">
           <Tooltip title="Editar puesto">
-            <Button
-              type="link"
-              icon={<EditOutlined />}
-              onClick={() => handleEdit(record)}
-            />
+            <Button type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)} />
           </Tooltip>
           <Tooltip title="Eliminar puesto">
-            <Button
-              type="link"
-              icon={<DeleteOutlined />}
-              onClick={() => handleDelete(record.id)}
-              danger
-            />
+            <Button type="link" icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)} danger />
           </Tooltip>
         </div>
       ),
@@ -129,6 +119,8 @@ const Positions: React.FC = () => {
     <div className="flex justify-center h-screen bg-gray-100">
       <div className="w-full max-w-7xl px-6 py-8 flex flex-col h-full bg-white shadow-lg rounded-lg">
         <h2 className="text-3xl font-semibold mb-6 text-center text-blue-800">Puestos</h2>
+
+        {/* Buscador y botón de agregar (Ahora Responsive) */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-6">
           <Input
             placeholder="Buscar por puesto"
@@ -138,22 +130,40 @@ const Positions: React.FC = () => {
           />
           <Button
             type="primary"
-            icon={<EditOutlined />}
+            icon={<FileAddOutlined />}
+            className="w-full md:w-auto flex items-center justify-center"
             onClick={() => {
               setSelectedPuesto(null);
               setIsModalOpen(true);
             }}
           >
-            + Agregar Puesto
+            <span className="hidden md:block">Agregar Puesto</span>
           </Button>
+
         </div>
-        <Table
-          dataSource={filteredPositions}
-          columns={columns}
-          rowKey="id"
-          pagination={{ pageSize: 10 }}
-          bordered
-        />
+
+        {/* Tabla con Paginación */}
+        <div className="overflow-x-auto flex flex-col h-full">
+          <Table
+            dataSource={positionsList.filter((p) =>
+              !searchTerm || p.nombrePuesto.toLowerCase().includes(searchTerm)
+            )}
+            columns={columns}
+            rowKey="id"
+            pagination={{
+              pageSize: pageSize,
+              showSizeChanger: true,
+
+              pageSizeOptions: ['10', '15', '20'],
+              onShowSizeChange: (_, size) => setPageSize(size),
+            }}
+            bordered
+            scroll={{ x: 'max-content' }}
+            loading={loading}
+          />
+        </div>
+
+        {/* Modal para agregar/editar puestos */}
         {isModalOpen && (
           <PuestoModal
             open={isModalOpen}

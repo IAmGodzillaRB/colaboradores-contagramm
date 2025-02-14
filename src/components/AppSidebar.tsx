@@ -6,13 +6,12 @@ import {
   TeamOutlined,
   BankOutlined,
   UserOutlined,
-  UploadOutlined,
   LogoutOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 
-const AppSidebar: React.FC = () => {
-  const { user, logout } = useAuth(); // Obtén el usuario y la función de logout desde el contexto
+const AppSidebar: React.FC<{ collapsed: boolean; isMobile: boolean }> = ({ collapsed, isMobile }) => {
+  const { logout } = useAuth(); // Obtén la función de logout desde el contexto
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -46,37 +45,28 @@ const AppSidebar: React.FC = () => {
       icon: <UserOutlined />,
       label: <Link to="/dashboard/users">Usuarios</Link>,
     },
-    {
-      key: 'csv',
-      icon: <UploadOutlined />,
-      label: 'Subir por CSV',
-      children: [
-        {
-          key: 'csvColab',
-          label: <Link to="/dashboard/csvColab">Colaboradores</Link>,
-        },
-        {
-          key: 'csvPuestos',
-          label: <Link to="/dashboard/csvPuestos">Puestos</Link>,
-        },
-      ],
-    },
   ];
 
   return (
-    <div className="flex flex-col h-screen bg-[#00274d] border-r-2 border-[#004c99] shadow-lg">
-      {/* Logo o avatar del usuario */}
+    <div
+      className={`flex flex-col h-screen bg-[#00274d] border-r-2 border-[#004c99] shadow-lg ${
+        collapsed && isMobile ? 'hidden' : collapsed ? 'w-20' : 'w-64'
+      }`}
+      style={{
+        position: isMobile ? 'absolute' : 'fixed', // Posición absoluta en móviles
+        height: '100vh',
+        zIndex: 1,
+        transition: 'transform 0.2s', // Transición suave
+        transform: isMobile && collapsed ? 'translateX(-100%)' : 'translateX(0)', // Deslizar el sidebar
+      }}
+    >
+      {/* Logo */}
       <div className="flex items-center justify-center p-4 border-b border-[#004c99]">
-        <div className="flex items-center">
-          <div className="w-16 h-16 bg-[#66b2ff] rounded-full flex items-center justify-center">
-            <UserOutlined className="text-white text-2xl" />
-          </div>
-          <div className="text-white text-center ml-3">
-            <strong>{user?.nombre || 'Usuario no identificado'}</strong>
-            <br />
-            <span>{user?.email || 'Correo no disponible'}</span>
-          </div>
-        </div>
+        <img
+          src={collapsed ? "/Isotipo-blanco.png" : "/logo-blanco.png"}
+          alt="Logo"
+          className={collapsed ? "w-10" : "w-28"}
+        />
       </div>
 
       {/* Menú */}
@@ -84,7 +74,8 @@ const AppSidebar: React.FC = () => {
         theme="dark" // Fondo oscuro
         mode="inline" // Modo vertical
         className="bg-transparent flex-1"
-        items={menuItems} // Usar la propiedad `items` en lugar de `children`
+        inlineCollapsed={collapsed} // Colapsar el menú
+        items={menuItems} // Usar la propiedad `items`
       />
 
       {/* Botón de cerrar sesión */}
@@ -93,8 +84,8 @@ const AppSidebar: React.FC = () => {
           onClick={handleLogout}
           className="w-full bg-[#004c99] text-white font-bold py-2 px-4 rounded flex items-center justify-center hover:bg-[#003366] transition-colors"
         >
-          <LogoutOutlined className="mr-2" />
-          Cerrar Sesión
+          <LogoutOutlined className="text-xl" />
+          {!collapsed && <span className="ml-2">Cerrar Sesión</span>}
         </button>
       </div>
     </div>
