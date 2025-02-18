@@ -281,7 +281,8 @@ const Colaborators: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
             aria-label="Buscar colaboradores por nombre o ID"
           />
-          <div className="space-x-2 mt-4 md:mt-0">
+          <div className="flex space-x-2 mt-4 md:mt-0">
+            {/* Botón "Ver Excel" */}
             <Button
               style={{
                 backgroundColor: '#28a745',
@@ -291,10 +292,12 @@ const Colaborators: React.FC = () => {
               icon={<FileExcelOutlined />}
               onClick={handleExportToExcel}
               aria-label="Exportar a Excel"
-              className="w-full sm:w-auto"
+              className="p-2 sm:px-4 sm:py-2 flex items-center justify-center"
             >
-              Ver Excel
+              <span className="hidden sm:inline">Ver Excel</span> {/* Texto visible solo en desktop */}
             </Button>
+
+            {/* Botón "Agregar Colaborador" */}
             <Button
               type="primary"
               onClick={() => {
@@ -302,9 +305,10 @@ const Colaborators: React.FC = () => {
                 setIsModalOpen(true);
               }}
               aria-label="Agregar nuevo colaborador"
-              className="w-full sm:w-auto mt-2 sm:mt-0"
+              className="p-2 sm:px-4 sm:py-2 flex items-center justify-center"
             >
-              + Agregar Colaborador
+              <span className="hidden sm:inline">+ Agregar Colaborador</span> {/* Texto visible solo en desktop */}
+              <span className="sm:hidden">+</span> {/* Solo muestra "+" en móvil */}
             </Button>
           </div>
         </div>

@@ -7,28 +7,34 @@ import {
   browserLocalPersistence,
   User as FirebaseUser,
 } from 'firebase/auth';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 import CircularProgress from '@mui/material/CircularProgress';
 
+// Definir el tipo de usuario
 interface User {
   uid: string;
   email: string | null;
-  name: string;
+  nombre: string;
+  rol: string; // Asegúrate de incluir el rol
   [key: string]: any; // Permite incluir otros datos del usuario
 }
 
+// Definir el tipo del contexto
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   logout: () => Promise<void>;
 }
 
+// Crear el contexto
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Props para el AuthProvider
 interface AuthProviderProps {
   children: ReactNode;
 }
 
+// Proveedor de autenticación
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -37,27 +43,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const auth = getAuth();
     const db = getFirestore();
 
+    // Configurar persistencia de sesión
     setPersistence(auth, browserLocalPersistence)
       .then(() => {
+        // Escuchar cambios en el estado de autenticación
         onAuthStateChanged(auth, async (currentUser: FirebaseUser | null) => {
           if (currentUser) {
             try {
+              // Obtener el documento del usuario en Firestore
               const userRef = doc(db, 'usuarios', currentUser.uid);
               const userDoc = await getDoc(userRef);
 
               if (userDoc.exists()) {
+                // Si el documento existe, asignar los datos al estado
                 setUser({
                   uid: currentUser.uid,
                   email: currentUser.email,
-                  name: userDoc.data().name || 'Usuario sin nombre',
+                  nombre: userDoc.data().nombre || 'Usuario sin nombre',
+                  rol: userDoc.data().rol || 'usuario', // Asegúrate de obtener el rol
                   ...userDoc.data(),
                 });
               } else {
-                console.error('El documento del usuario no existe en Firestore');
+                // Si el documento no existe, crear uno nuevo
+                console.warn('El documento del usuario no existe en Firestore. Creando uno nuevo...');
+                await setDoc(userRef, {
+                  nombre: 'Usuario no registrado',
+                  email: currentUser.email,
+                  rol: 'usuario', // Rol por defecto
+                });
                 setUser({
                   uid: currentUser.uid,
                   email: currentUser.email,
-                  name: 'Usuario no registrado',
+                  nombre: 'Usuario no registrado',
+                  rol: 'usuario', // Asignar el rol por defecto
                 });
               }
             } catch (error) {
@@ -65,6 +83,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               setUser(null);
             }
           } else {
+            // Si no hay usuario autenticado, limpiar el estado
             setUser(null);
           }
           setLoading(false);
@@ -76,6 +95,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
   }, []);
 
+  // Función para cerrar sesión
   const logout = async (): Promise<void> => {
     const auth = getAuth();
     try {
@@ -99,6 +119,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 };
 
+// Hook para usar el contexto de autenticación
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {

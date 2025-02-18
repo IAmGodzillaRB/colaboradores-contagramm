@@ -10,6 +10,7 @@ import { Helmet } from 'react-helmet';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from 'antd';
 import { MenuUnfoldOutlined, MenuFoldOutlined } from '@ant-design/icons';
+import AttendanceVerification from './AttendanceVerification';
 
 const DashboardLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -178,11 +179,26 @@ const DashboardLayout: React.FC = () => {
         <div className="p-2">
           <Routes>
             <Route index element={<h1 className="text-2xl font-bold">Bienvenido al Dashboard</h1>} />
-            <Route path="colaborators" element={<Colaborators />} />
-            <Route path="puestos" element={<Puestos />} />
-            <Route path="csvColab" element={<CSVColab />} />
-            <Route path="csvPuestos" element={<CSVPuestos />} />
-            <Route path="users" element={<Users />} />
+            {user?.rol === 'admin' && (
+              <>
+                <Route path="colaborators" element={<Colaborators />} />
+                <Route path="puestos" element={<Puestos />} />
+                <Route path="csvColab" element={<CSVColab />} />
+                <Route path="csvPuestos" element={<CSVPuestos />} />
+                <Route path="users" element={<Users />} />
+              </>
+            )}
+            {user?.rol === 'editor' && (
+              <>
+                <Route path="colaborators" element={<Colaborators />} />
+                <Route path="puestos" element={<Puestos />} />
+                <Route path="csvColab" element={<CSVColab />} />
+                <Route path="csvPuestos" element={<CSVPuestos />} />
+              </>
+            )}
+            {user?.rol === 'usuario' && (
+              <Route path="attendance" element={<AttendanceVerification />} />
+            )}
           </Routes>
         </div>
       </main>

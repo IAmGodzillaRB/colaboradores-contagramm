@@ -7,15 +7,16 @@ import {
   BankOutlined,
   UserOutlined,
   LogoutOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 
 const AppSidebar: React.FC<{
   collapsed: boolean;
   isMobile: boolean;
-  onItemClick: () => void; // Nueva prop para manejar el clic
+  onItemClick: () => void; 
 }> = ({ collapsed, isMobile, onItemClick }) => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth(); // Obtener el usuario del contexto
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -32,30 +33,52 @@ const AppSidebar: React.FC<{
     {
       key: 'dashboard',
       icon: <DashboardOutlined />,
-      label: <Link to="/dashboard" onClick={onItemClick}>Dashboard</Link>, // Llama a onItemClick
+      label: <Link to="/dashboard" onClick={onItemClick}>Dashboard</Link>,
     },
     {
       key: 'colaborators',
       icon: <TeamOutlined />,
-      label: <Link to="/dashboard/colaborators" onClick={onItemClick}>Colaboradores</Link>, // Llama a onItemClick
+      label: <Link to="/dashboard/colaborators" onClick={onItemClick}>Colaboradores</Link>,
     },
     {
       key: 'puestos',
       icon: <BankOutlined />,
-      label: <Link to="/dashboard/puestos" onClick={onItemClick}>Puestos</Link>, // Llama a onItemClick
+      label: <Link to="/dashboard/puestos" onClick={onItemClick}>Puestos</Link>,
     },
     {
       key: 'users',
       icon: <UserOutlined />,
-      label: <Link to="/dashboard/users" onClick={onItemClick}>Usuarios</Link>, // Llama a onItemClick
+      label: <Link to="/dashboard/users" onClick={onItemClick}>Usuarios</Link>,
+    },
+    {
+      key: 'attendance',
+      icon: <CheckCircleOutlined />,
+      label: <Link to="/dashboard/attendance" onClick={onItemClick}>Verificar Asistencia</Link>,
     },
   ];
 
+  // Filtrar los elementos del menú basados en el rol del usuario
+  const filteredMenuItems = menuItems.filter((item) => {
+    switch (user?.rol) {
+      case 'admin':
+        // El administrador ve todo
+        return true;
+      case 'editor':
+        // El editor ve todo excepto "Usuarios" y "Verificar Asistencia"
+        return item.key !== 'users' && item.key !== 'attendance';
+      case 'usuario':
+        // El usuario solo ve "Verificar Asistencia"
+        return item.key === 'attendance';
+      default:
+        // Por defecto, no mostrar nada
+        return false;
+    }
+  });
+
   return (
     <div
-      className={`flex flex-col h-screen bg-[#00274d] border-r-2 border-[#004c99] shadow-lg ${
-        collapsed && !isMobile ? 'w-20' : 'w-64'
-      }`}
+      className={`flex flex-col h-screen bg-[#00274d] border-r-2 border-[#004c99] shadow-lg ${collapsed && !isMobile ? 'w-20' : 'w-64'
+        }`}
       style={{
         position: isMobile ? 'fixed' : 'static',
         height: '100vh',
@@ -79,7 +102,7 @@ const AppSidebar: React.FC<{
         mode="inline"
         className="bg-transparent flex-1"
         inlineCollapsed={collapsed && !isMobile}
-        items={menuItems}
+        items={filteredMenuItems} // Usar los elementos filtrados
       />
 
       {/* Botón de cerrar sesión */}
