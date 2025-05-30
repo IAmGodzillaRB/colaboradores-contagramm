@@ -1,19 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { db, collection, doc, setDoc, getDocs, deleteDoc, updateDoc } from '../../service/firebaseConfig';
-import { createUserWithEmailAndPassword, getAuth, sendEmailVerification } from 'firebase/auth';
+import React, { useState, useEffect, useCallback } from 'react';
+import { db, collection, doc, getDocs, deleteDoc, updateDoc } from '../../service/firebaseConfig';
 import { Table, Input, Button, Tag, Tooltip, notification } from 'antd';
-import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, EyeOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import UserModal from '../../components/modals/UserModal';
-
-interface User {
-  id: string;
-  nombre: string;
-  email: string;
-  rol: string;
-}
+import LocationManagementModal from '../../components/modals/LocationManagementModal';
+import { User } from '../../types/User';
+import { Ubicacion } from '../../types/Ubicacion';
 
 const UsersManagement: React.FC = () => {
-  const [openAddModal, setOpenAddModal] = useState<boolean>(false);
   const [openEditModal, setOpenEditModal] = useState<boolean>(false);
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
@@ -28,28 +22,53 @@ const UsersManagement: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentUserRole] = useState<string>('admin');
   const [modalLoading, setModalLoading] = useState<boolean>(false);
+  const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([]);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState<boolean>(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
-  const fetchUsers = async () => {
+  // Obtener usuarios
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
       const querySnapshot = await getDocs(collection(db, 'usuarios'));
-      const usuarios = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as User));
+      const usuarios = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        ubicacionesAsignadas: doc.data().ubicacionesAsignadas || [],
+      } as User));
       setAllUsers(usuarios);
       setFilteredUsers(usuarios);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-      setError(errorMessage);
       showNotification('error', 'Error al cargar usuarios', errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
+  // Obtener ubicaciones
+  const fetchUbicaciones = useCallback(async () => {
+    try {
+      const ubicacionesCollection = collection(db, 'ubicaciones');
+      const ubicacionesSnapshot = await getDocs(ubicacionesCollection);
+      const ubicacionesData: Ubicacion[] = ubicacionesSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data() as Omit<Ubicacion, 'id'>,
+      }));
+      setUbicaciones(ubicacionesData);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      showNotification('error', 'Error al cargar ubicaciones', errorMessage);
+    }
+  }, []);
+
+  // Cargar datos iniciales
   useEffect(() => {
     fetchUsers();
-  }, []);
+    fetchUbicaciones();
+  }, [fetchUsers, fetchUbicaciones]);
 
   const showNotification = (type: 'success' | 'error', message: string, description?: string) => {
     notification[type]({
@@ -58,52 +77,116 @@ const UsersManagement: React.FC = () => {
     });
   };
 
-  const handleAddUser = async (values: any) => {
-    const { nombre, email, password, rol } = values;
-  
-    try {
-      setModalLoading(true);
-      const auth = getAuth();
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-  
-      // Enviar correo de verificación
-      await sendEmailVerification(user);
-  
-      // Crear el documento en Firestore
-      await setDoc(doc(db, 'usuarios', user.uid), { nombre, email, rol });
-  
-      fetchUsers();
-      showNotification('success', 'Éxito', 'Usuario creado correctamente. Se ha enviado un correo de verificación.');
-      setFormData({ id: '', nombre: '', email: '', password: '', rol: 'usuario' });
-      setOpenAddModal(false);
-      console.log("Correo de verificación enviado:", user.emailVerified);
-    } catch (error: any) {
-      console.error('Error al crear usuario:', error);
-      showNotification('error', 'Error al crear usuario', error.message);
-    } finally {
-      setModalLoading(false);
-    }
-  };
+  // Editar usuario
   const handleEditUser = async (values: any) => {
     const { id, nombre, email, rol } = values;
-
     try {
       setModalLoading(true);
       await updateDoc(doc(db, 'usuarios', id), { nombre, email, rol });
-
       fetchUsers();
       showNotification('success', 'Éxito', 'Usuario actualizado correctamente.');
       setFormData({ id: '', nombre: '', email: '', password: '', rol: 'usuario' });
       setOpenEditModal(false);
     } catch (error: any) {
-      console.error('Error al actualizar usuario:', error);
       showNotification('error', 'Error al actualizar usuario', error.message);
     } finally {
       setModalLoading(false);
     }
   };
 
+  // Eliminar usuario
+  const handleDelete = async (id: string) => {
+    notification.warning({
+      message: '¿Estás seguro?',
+      description: 'Esta acción eliminará al usuario de forma permanente.',
+      duration: 0,
+      btn: (
+        <div>
+          <Button
+            type="primary"
+            danger
+            onClick={async () => {
+              notification.destroy();
+              try {
+                await deleteDoc(doc(db, 'usuarios', id));
+                setAllUsers((prevList) => prevList.filter((user) => user.id !== id));
+                setFilteredUsers((prevList) => prevList.filter((user) => user.id !== id));
+                showNotification('success', 'Éxito', 'El usuario ha sido eliminado correctamente.');
+              } catch (error: any) {
+                showNotification('error', 'Error al eliminar usuario', error.message);
+              }
+            }}
+          >
+            Sí, eliminar
+          </Button>
+          <Button style={{ marginLeft: 8 }} onClick={() => notification.destroy()}>
+            Cancelar
+          </Button>
+        </div>
+      ),
+    });
+  };
+
+  // Asignar ubicación
+  const handleAssignLocation = async (ubicacionId: string) => {
+    if (!selectedUser) {
+      showNotification('error', 'Sin selección', 'Debe seleccionar un usuario.');
+      return;
+    }
+    try {
+      const userRef = doc(db, 'usuarios', selectedUser.id);
+      let ubicacionesActualizadas = [...selectedUser.ubicacionesAsignadas];
+
+      if (!ubicacionesActualizadas.includes(ubicacionId)) {
+        ubicacionesActualizadas.push(ubicacionId);
+      }
+
+      await updateDoc(userRef, { ubicacionesAsignadas: ubicacionesActualizadas });
+
+      showNotification('success', 'Asignación actualizada', 'Ubicación asignada correctamente.');
+      const usuarioActualizado = {
+        ...selectedUser,
+        ubicacionesAsignadas: ubicacionesActualizadas,
+      };
+      setSelectedUser(usuarioActualizado);
+      await fetchUsers();
+      await fetchUbicaciones();
+    } catch (error: any) {
+      showNotification('error', 'Error en la asignación', error.message);
+    }
+  };
+
+  // Desasignar ubicación específica
+  const handleRemoveLocation = async (ubicacionId: string) => {
+    if (!selectedUser) {
+      showNotification('error', 'Sin selección', 'Debe seleccionar un usuario.');
+      return;
+    }
+    try {
+      const userRef = doc(db, 'usuarios', selectedUser.id);
+      const ubicacionesActualizadas = selectedUser.ubicacionesAsignadas.filter(
+        (id) => id !== ubicacionId
+      );
+
+      await updateDoc(userRef, { ubicacionesAsignadas: ubicacionesActualizadas });
+
+      const usuarioActualizado = { ...selectedUser, ubicacionesAsignadas: ubicacionesActualizadas };
+      setSelectedUser(usuarioActualizado);
+
+      showNotification('success', 'Ubicación removida', 'Ubicación desasignada correctamente.');
+      await fetchUsers();
+    } catch (error: any) {
+      showNotification('error', 'Error al remover ubicación', error.message);
+    }
+  };
+
+  // Ver ubicaciones asignadas
+  const handleViewLocation = (user: User) => {
+    setSelectedUser(user);
+    setIsLocationModalOpen(true);
+  };
+
+  // Buscar usuarios
   const handleSearch = (searchTerm: string) => {
     const filtered = allUsers.filter(
       (user) =>
@@ -113,6 +196,7 @@ const UsersManagement: React.FC = () => {
     setFilteredUsers(filtered);
   };
 
+  // Columnas de la tabla
   const columns = [
     {
       title: 'Nombre',
@@ -133,69 +217,75 @@ const UsersManagement: React.FC = () => {
       ),
     },
     {
+      title: 'Ubicaciones Asignadas',
+      dataIndex: 'ubicacionesAsignadas',
+      key: 'ubicacionesAsignadas',
+      render: (ubicacionesIds: string[], record: User) => {
+        const ubicacionesAsignadas = ubicaciones.filter((u) => ubicacionesIds.includes(u.id));
+        return (
+          <div className="flex items-center gap-2 flex-wrap">
+            {ubicacionesAsignadas.length > 0 ? (
+              <>
+                {ubicacionesAsignadas.slice(0, 2).map((ubicacion) => (
+                  <Tag key={ubicacion.id} color="blue" icon={<EnvironmentOutlined />}>
+                    {ubicacion.nombre}
+                  </Tag>
+                ))}
+                {ubicacionesAsignadas.length > 2 && (
+                  <Tag color="default">+{ubicacionesAsignadas.length - 2} más</Tag>
+                )}
+              </>
+            ) : (
+              <Tag color="default">Sin asignar</Tag>
+            )}
+            {currentUserRole === 'admin' && (
+              <Tooltip title="Ver ubicaciones asignadas">
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<EyeOutlined />}
+                  onClick={() => handleViewLocation(record)}
+                  aria-label="Ver ubicaciones asignadas"
+                />
+              </Tooltip>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       title: 'Acciones',
       key: 'actions',
       render: (record: User) => (
         <div className="flex space-x-2">
           {currentUserRole === 'admin' && (
-            <Tooltip title="Editar usuario">
-              <Button
-                type="link"
-                icon={<EditOutlined />}
-                onClick={() => {
-                  setFormData({ ...record, password: '' });
-                  setOpenEditModal(true);
-                }}
-                aria-label="Editar usuario"
-              />
-            </Tooltip>
-          )}
-          {currentUserRole === 'admin' && (
-            <Tooltip title="Eliminar usuario">
-              <Button
-                type="link"
-                icon={<DeleteOutlined />}
-                onClick={() => handleDelete(record.id)}
-                aria-label="Eliminar usuario"
-                danger
-              />
-            </Tooltip>
+            <>
+              <Tooltip title="Editar usuario">
+                <Button
+                  type="link"
+                  icon={<EditOutlined />}
+                  onClick={() => {
+                    setFormData({ ...record, password: '' });
+                    setOpenEditModal(true);
+                  }}
+                  aria-label="Editar usuario"
+                />
+              </Tooltip>
+              <Tooltip title="Eliminar usuario">
+                <Button
+                  type="link"
+                  icon={<DeleteOutlined />}
+                  onClick={() => handleDelete(record.id)}
+                  aria-label="Eliminar usuario"
+                  danger
+                />
+              </Tooltip>
+            </>
           )}
         </div>
       ),
     },
   ];
-
-  const handleDelete = async (id: string) => {
-    notification.warning({
-      message: '¿Estás seguro?',
-      description: 'Esta acción eliminará al usuario de forma permanente.',
-      duration: 0,
-      btn: (
-        <div>
-          <Button
-            type="primary"
-            danger
-            onClick={async () => {
-              notification.destroy();
-              await deleteDoc(doc(db, 'usuarios', id));
-              setAllUsers((prevList) => prevList.filter((user) => user.id !== id));
-              setFilteredUsers((prevList) => prevList.filter((user) => user.id !== id));
-              showNotification('success', 'Éxito', 'El usuario ha sido eliminado correctamente.');
-            }}
-          >
-            Sí, eliminar
-          </Button>
-          <Button
-            style={{ marginLeft: 8 }}
-            onClick={() => notification.destroy()}
-          >
-            Cancelar
-          </Button>
-        </div>
-      ),
-    });
-  };
 
   return (
     <div className="flex justify-center h-screen bg-gray-100">
@@ -209,29 +299,13 @@ const UsersManagement: React.FC = () => {
           </div>
         )}
 
-        <div className="flex flex-col md:flex-row justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-6">
           <Input
             placeholder="Buscar por nombre o email"
             className="w-full md:w-1/3"
             onChange={(e) => handleSearch(e.target.value)}
             aria-label="Buscar usuarios por nombre o email"
           />
-          {currentUserRole === 'admin' && (
-            <div className="flex space-x-2 mt-4 md:mt-0">
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => {
-                  setFormData({ id: '', nombre: '', email: '', password: '', rol: 'usuario' });
-                  setOpenAddModal(true);
-                }}
-                aria-label="Agregar nuevo usuario"
-                className="p-2 sm:px-4 sm:py-2 flex items-center justify-center"
-              >
-                <span className="hidden sm:inline">Agregar Usuario</span>
-              </Button>
-            </div>
-          )}
         </div>
 
         <div className="overflow-x-auto flex flex-col h-full">
@@ -252,20 +326,24 @@ const UsersManagement: React.FC = () => {
         </div>
 
         <UserModal
-          open={openAddModal}
-          onClose={() => setOpenAddModal(false)}
-          onSubmit={handleAddUser}
-          formData={formData}
-          isEditMode={false}
-          loading={modalLoading}
-        />
-
-        <UserModal
           open={openEditModal}
           onClose={() => setOpenEditModal(false)}
           onSubmit={handleEditUser}
           formData={formData}
           isEditMode={true}
+          loading={modalLoading}
+        />
+
+        <LocationManagementModal
+          open={isLocationModalOpen}
+          onClose={() => {
+            setIsLocationModalOpen(false);
+            setSelectedUser(null);
+          }}
+          selectedUser={selectedUser}
+          ubicaciones={ubicaciones}
+          handleAssignLocation={handleAssignLocation}
+          handleRemoveLocation={handleRemoveLocation}
           loading={modalLoading}
         />
       </div>

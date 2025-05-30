@@ -14,7 +14,7 @@ const App = () => {
           <Route path="/" element={<EmployeeVerifier />} />
           <Route path="/usuarios/login" element={<Login />} />
           <Route
-            path="/dashboard/*" // Usa /* para permitir rutas anidadas
+            path="/dashboard/*"
             element={
               <ProtectedRoute>
                 <Dashboard />

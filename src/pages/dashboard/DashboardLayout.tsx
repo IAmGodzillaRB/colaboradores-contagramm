@@ -11,6 +11,8 @@ import { useAuth } from '../../context/AuthContext';
 import { Button } from 'antd';
 import { MenuUnfoldOutlined, MenuFoldOutlined } from '@ant-design/icons';
 import AttendanceVerification from './AttendanceVerification';
+import LocationManagement from './LocationManagement';
+import AsistenciasAdmin from './ControlAsistencia';
 
 const DashboardLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -186,6 +188,8 @@ const DashboardLayout: React.FC = () => {
                 <Route path="csvColab" element={<CSVColab />} />
                 <Route path="csvPuestos" element={<CSVPuestos />} />
                 <Route path="users" element={<Users />} />
+                <Route path="locations" element={< LocationManagement/>} />
+                <Route path="asistencias" element={< AsistenciasAdmin/>} />
               </>
             )}
             {user?.rol === 'editor' && (

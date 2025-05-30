@@ -11,7 +11,7 @@ interface UserModalProps {
     email: string;
     password?: string;
     rol: string;
-  };
+  } | null;
   isEditMode: boolean;
   loading: boolean;
 }
@@ -26,10 +26,34 @@ const UserModal: React.FC<UserModalProps> = ({
 }) => {
   const [form] = Form.useForm();
 
-  // Resetear el formulario cuando se abra el modal o cambien los datos
+  // Initialize form with formData when modal opens or formData changes
   React.useEffect(() => {
-    form.setFieldsValue(formData);
-  }, [formData, open]);
+    if (open) {
+      if (formData) {
+        // Set form fields with formData for editing
+        form.setFieldsValue({
+          nombre: formData.nombre || "",
+          email: formData.email || "",
+          rol: formData.rol || "",
+          password: isEditMode ? undefined : formData.password || "", // Avoid setting password in edit mode
+        });
+      } else {
+        // Reset form for adding new user
+        form.resetFields();
+      }
+    }
+  }, [formData, open, isEditMode, form]);
+
+  // Handle form submission
+  const handleSubmit = (values: any) => {
+    onSubmit({
+      ...values,
+      id: formData?.id, // Include id in edit mode
+    });
+    if (!isEditMode) {
+      form.resetFields(); // Reset form after adding new user
+    }
+  };
 
   return (
     <Modal
@@ -43,12 +67,20 @@ const UserModal: React.FC<UserModalProps> = ({
       centered
       width={400}
     >
-      <Form form={form} layout="vertical" onFinish={onSubmit}>
-        <Form.Item label="Nombre" name="nombre" rules={[{ required: true, message: "Ingrese el nombre" }]}>
+      <Form form={form} layout="vertical" onFinish={handleSubmit}>
+        <Form.Item
+          label="Nombre"
+          name="nombre"
+          rules={[{ required: true, message: "Ingrese el nombre" }]}
+        >
           <Input placeholder="Nombre" />
         </Form.Item>
 
-        <Form.Item label="Email" name="email" rules={[{ required: true, type: "email", message: "Ingrese un email válido" }]}>
+        <Form.Item
+          label="Email"
+          name="email"
+          rules={[{ required: true, type: "email", message: "Ingrese un email válido" }]}
+        >
           <Input placeholder="Correo electrónico" />
         </Form.Item>
 
@@ -62,10 +94,14 @@ const UserModal: React.FC<UserModalProps> = ({
             ]}
           >
             <Input.Password placeholder="Contraseña" />
-          </Form.Item>
+        </Form.Item>
         )}
 
-        <Form.Item label="Rol" name="rol" rules={[{ required: true, message: "Seleccione un rol" }]}>
+        <Form.Item
+          label="Rol"
+          name="rol"
+          rules={[{ required: true, message: "Seleccione un rol" }]}
+        >
           <Select placeholder="Seleccione un rol">
             <Select.Option value="admin">Admin</Select.Option>
             <Select.Option value="editor">Editor</Select.Option>
@@ -75,7 +111,14 @@ const UserModal: React.FC<UserModalProps> = ({
 
         <Form.Item>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-            <Button type="default" danger onClick={onClose}>
+            <Button
+              type="default"
+              danger
+              onClick={() => {
+                form.resetFields();
+                onClose();
+              }}
+            >
               Cancelar
             </Button>
             <Button type="primary" htmlType="submit" loading={loading} disabled={loading}>

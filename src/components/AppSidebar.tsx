@@ -55,6 +55,16 @@ const AppSidebar: React.FC<{
       icon: <CheckCircleOutlined />,
       label: <Link to="/dashboard/attendance" onClick={onItemClick}>Verificar Asistencia</Link>,
     },
+    {
+      key: 'locations',
+      icon: <CheckCircleOutlined />,
+      label: <Link to="/dashboard/locations" onClick={onItemClick}>Ubicaciones</Link>,
+    },
+    {
+      key: 'asistencias',
+      icon: <CheckCircleOutlined />,
+      label: <Link to="/dashboard/asistencias" onClick={onItemClick}>Asistencias</Link>,
+    }
   ];
 
   // Filtrar los elementos del menú basados en el rol del usuario
@@ -70,7 +80,7 @@ const AppSidebar: React.FC<{
         // El usuario solo ve "Verificar Asistencia"
         return item.key === 'attendance';
       default:
-        // Por defecto, no mostrar nada
+
         return false;
     }
   });
